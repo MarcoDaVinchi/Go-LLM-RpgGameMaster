@@ -18,6 +18,8 @@
 *.ipr
 .idea
 .idea/
+qdrant_storage/
+base.db
 
 # Test binary, built with `go test -c`
 *.test

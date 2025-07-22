@@ -1,0 +1,274 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  DB_NAME: base.db
+  SCHEMA_FILE: schema.sql
+  SEED_FILE: seed.sql
+  BACKUP_DIR: backups
+  TIMESTAMP: '{{now | date "2006-01-02_15-04-05"}}'
+
+tasks:
+  create-empty-db:
+    desc: "Creates empty database"
+    cmds:
+      - echo "Creating empty database {{.DB_NAME}}"
+      - sqlite3 {{.DB_NAME}} "VACUUM;"
+      - echo "Database created successfully"
+  create-db:
+    desc: "Create database with schema"
+    cmds:
+      - echo "Creating database {{.DB_NAME}}"
+      - sqlite3 {{.DB_NAME}} < {{.SCHEMA_FILE}}
+      - echo "Database created successfully"
+    sources:
+      - "{{.SCHEMA_FILE}}"
+    generates:
+      - "{{.DB_NAME}}"
+    preconditions:
+      - test -f {{.SCHEMA_FILE}}
+
+  clean-db:
+    desc: "Remove database file"
+    cmds:
+      - echo "Removing database {{.DB_NAME}}"
+      - rm -f {{.DB_NAME}}
+      - echo "Database removed"
+
+  seed-db:
+    desc: "Seed database with test data"
+    deps: [create-db]
+    cmds:
+      - echo "Seeding database with test data"
+      - sqlite3 {{.DB_NAME}} < {{.SEED_FILE}}
+      - echo "Database seeded successfully"
+    sources:
+      - "{{.SEED_FILE}}"
+    preconditions:
+      - test -f {{.DB_NAME}}
+      - test -f {{.SEED_FILE}}
+
+  reset-db:
+    desc: "Reset database (clean + create + seed)"
+    cmds:
+      - task: clean-db
+      - task: create-db
+      - task: seed-db
+      - echo "Database reset complete"
+
+  stats:
+    desc: "Show database statistics"
+    cmds:
+      - echo "Database statistics:"
+      - echo "Users{{":"}} $(sqlite3 {{.DB_NAME}} 'SELECT COUNT(*) FROM users;')"
+      - echo "Posts{{":"}} $(sqlite3 {{.DB_NAME}} 'SELECT COUNT(*) FROM posts;')"
+      - echo "Categories{{":"}} $(sqlite3 {{.DB_NAME}} 'SELECT COUNT(*) FROM categories;')"
+      - echo "Tags{{":"}} $(sqlite3 {{.DB_NAME}} 'SELECT COUNT(*) FROM tags;')"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  backup:
+    desc: "Create database backup"
+    cmds:
+      - mkdir -p {{.BACKUP_DIR}}
+      - echo "Creating backup{{":"}} {{.BACKUP_DIR}}/{{.DB_NAME}}.{{.TIMESTAMP}}.backup"
+      - cp {{.DB_NAME}} {{.BACKUP_DIR}}/{{.DB_NAME}}.{{.TIMESTAMP}}.backup
+      - echo "Backup created successfully"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  restore:
+    desc: "Restore database from latest backup"
+    cmds:
+      - |
+        LATEST_BACKUP=$(ls -t {{.BACKUP_DIR}}/{{.DB_NAME}}.*.backup 2>/dev/null | head -1)
+        if [ -z "$LATEST_BACKUP" ]; then
+          echo "No backup files found in {{.BACKUP_DIR}}"
+          exit 1
+        fi
+        echo "Restoring from backup: $LATEST_BACKUP"
+        cp "$LATEST_BACKUP" {{.DB_NAME}}
+        echo "Database restored successfully"
+    preconditions:
+      - test -d {{.BACKUP_DIR}}
+
+  list-backups:
+    desc: "List available backups"
+    cmds:
+      - echo "Available backups:"
+      - ls -la {{.BACKUP_DIR}}/{{.DB_NAME}}.*.backup 2>/dev/null || echo "No backups found"
+
+  validate:
+    desc: "Validate database schema and data"
+    cmds:
+      - echo "Validating database schema..."
+      - sqlite3 {{.DB_NAME}} "PRAGMA integrity_check;"
+      - sqlite3 {{.DB_NAME}} "PRAGMA foreign_key_check;"
+      - echo "Database validation complete"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  migrate:
+    desc: "Run database migrations"
+    cmds:
+      - echo "Running database migrations..."
+      - |
+        if [ -d "migrations" ]; then
+          for migration in migrations/*.sql; do
+            if [ -f "$migration" ]; then
+              echo "Running migration: $migration"
+              sqlite3 {{.DB_NAME}} < "$migration"
+            fi
+          done
+        else
+          echo "No migrations directory found"
+        fi
+      - echo "Migrations complete"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  shell:
+    desc: "Open SQLite shell for database"
+    cmds:
+      - echo "Opening SQLite shell for {{.DB_NAME}}"
+      - sqlite3 {{.DB_NAME}}
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  dump:
+    desc: "Dump database to SQL file"
+    cmds:
+      - echo "Dumping database to {{.DB_NAME}}.dump.sql"
+      - sqlite3 {{.DB_NAME}} .dump > {{.DB_NAME}}.dump.sql
+      - echo "Database dumped successfully"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  size:
+    desc: "Show database file size"
+    cmds:
+      - echo "Database size:"
+      - du -h {{.DB_NAME}}
+      - echo "Database info:"
+      - sqlite3 {{.DB_NAME}} "SELECT name FROM sqlite_master WHERE type='table';"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  dev:
+    desc: "Development setup (reset + seed + show stats)"
+    cmds:
+      - task: reset-db
+      - task: stats
+      - echo "Development environment ready!"
+
+  test:
+    desc: "Run database tests"
+    cmds:
+      - echo "Running database tests..."
+      - |
+        # Test user creation
+        USER_COUNT=$(sqlite3 {{.DB_NAME}} "SELECT COUNT(*) FROM users;")
+        if [ "$USER_COUNT" -eq 0 ]; then
+          echo "❌ Test failed: No users found"
+          exit 1
+        fi
+        echo "✅ Users test passed ($USER_COUNT users)"
+        
+        # Test foreign key constraints
+        sqlite3 {{.DB_NAME}} "PRAGMA foreign_key_check;" > /dev/null
+        if [ $? -eq 0 ]; then
+          echo "✅ Foreign key constraints test passed"
+        else
+          echo "❌ Foreign key constraints test failed"
+          exit 1
+        fi
+        
+        echo "All tests passed!"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  clean-all:
+    desc: "Clean database and all backups"
+    cmds:
+      - task: clean-db
+      - rm -rf {{.BACKUP_DIR}}
+      - rm -f {{.DB_NAME}}.dump.sql
+      - echo "All database files cleaned"
+
+  watch:
+    desc: "Watch for schema changes and rebuild"
+    cmds:
+      - echo "Watching for changes in {{.SCHEMA_FILE}} and {{.SEED_FILE}}..."
+      - |
+        while true; do
+          if [ {{.SCHEMA_FILE}} -nt {{.DB_NAME}} ] || [ {{.SEED_FILE}} -nt {{.DB_NAME}} ]; then
+            echo "Changes detected, rebuilding database..."
+            task reset-db
+          fi
+          sleep 2
+        done
+    preconditions:
+      - test -f {{.SCHEMA_FILE}}
+      - test -f {{.SEED_FILE}}
+
+  # Advanced tasks
+  analyze:
+    desc: "Analyze database performance"
+    cmds:
+      - echo "Analyzing database performance..."
+      - sqlite3 {{.DB_NAME}} "ANALYZE;"
+      - sqlite3 {{.DB_NAME}} "PRAGMA optimize;"
+      - echo "Database analysis complete"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  vacuum:
+    desc: "Vacuum database to reclaim space"
+    cmds:
+      - echo "Vacuuming database..."
+      - sqlite3 {{.DB_NAME}} "VACUUM;"
+      - echo "Database vacuumed successfully"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  maintenance:
+    desc: "Run database maintenance tasks"
+    cmds:
+      - task: analyze
+      - task: vacuum
+      - task: validate
+      - echo "Database maintenance complete"
+
+  # Production tasks
+  prod-backup:
+    desc: "Create production backup with compression"
+    cmds:
+      - mkdir -p {{.BACKUP_DIR}}/production
+      - echo "Creating compressed production backup..."
+      - sqlite3 {{.DB_NAME}} .dump | gzip > {{.BACKUP_DIR}}/production/{{.DB_NAME}}.{{.TIMESTAMP}}.sql.gz
+      - echo "Production backup created {{.BACKUP_DIR}}/production/{{.DB_NAME}}.{{.TIMESTAMP}}.sql.gz"
+    preconditions:
+      - test -f {{.DB_NAME}}
+
+  prod-restore:
+    desc: "Restore from production backup"
+    cmds:
+      - |
+        echo "Available production backups:"
+        ls -la {{.BACKUP_DIR}}/production/
+        read -p "Enter backup filename: " BACKUP_FILE
+        if [ -f "{{.BACKUP_DIR}}/production/$BACKUP_FILE" ]; then
+          echo "Restoring from: $BACKUP_FILE"
+          task clean-db
+          gunzip -c "{{.BACKUP_DIR}}/production/$BACKUP_FILE" | sqlite3 {{.DB_NAME}}
+          echo "Production restore complete"
+        else
+          echo "Backup file not found"
+          exit 1
+        fi
+
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
