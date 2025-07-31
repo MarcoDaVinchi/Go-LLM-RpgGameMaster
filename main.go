@@ -40,9 +40,7 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	// Извлекаем текст запроса после команды /gpt
-	prompt := strings.TrimSpace(update.Message.Text)
-	// Если запрос пустой, отправляем сообщение с инструкцией
+	prompt := strings.TrimSpace(update.Message.Text[len("/gpt"):])
 	if prompt == "" {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -51,10 +49,9 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	// Создаем клиент для Ollama
-	client := llm.NewOllamaClient("llama3.1")
+	// Создаем клиент и настраиваем его (только конфигурация)
+	client := llm.NewRPGOllamaClient("llama3.1")
 
-	// Отправляем запрос и получаем ответ
 	response, err := client.GenerateSimpleResponse(ctx, prompt)
 	if err != nil {
 		log.Err(err).Msg("failed to get response from Ollama")
@@ -65,7 +62,6 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	// Отправляем ответ пользователю
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   response,
