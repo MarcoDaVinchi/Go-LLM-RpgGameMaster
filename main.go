@@ -42,10 +42,14 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	prompt := strings.TrimSpace(update.Message.Text[len("/gpt"):])
 	if prompt == "" {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Пожалуйста, укажите запрос после команды /gpt",
 		})
+		if err != nil {
+			log.Err(err).Msg("failed to send message")
+			return
+		}
 		return
 	}
 
@@ -55,17 +59,25 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	response, err := client.GenerateSimpleResponse(ctx, prompt)
 	if err != nil {
 		log.Err(err).Msg("failed to get response from Ollama")
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   "Ошибка обращения к Ollama: " + err.Error(),
 		})
+		if err != nil {
+			log.Err(err).Msg("failed to send error message")
+			return
+		}
 		return
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   response,
 	})
+	if err != nil {
+		log.Err(err).Msg("failed to send response message")
+		return
+	}
 }
 
 func echoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {

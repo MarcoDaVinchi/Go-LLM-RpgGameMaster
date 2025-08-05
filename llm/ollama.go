@@ -4,71 +4,57 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/tmc/langchaingo/chains"
-	"github.com/tmc/langchaingo/embeddings"
 	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/prompts"
 	"github.com/tmc/langchaingo/schema"
-	"github.com/tmc/langchaingo/vectorstores"
-	"github.com/tmc/langchaingo/vectorstores/qdrant"
+
+	"go-llm-rpggamemaster/clients"
+	"go-llm-rpggamemaster/retrievers"
 )
 
 const (
-	defaultOllamaModel    = "llama3.1"
-	defaultEmbeddingModel = "nomic-embed-text"
-	ollamaTimeout         = 60 * time.Second
-	defaultCollection     = "game_collection"
+	ollamaTimeout = 60 * time.Second
 )
 
-type SystemPrompt struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
 type OllamaClient struct {
-	model           string
-	llm             *ollama.LLM
-	embedder        *embeddings.EmbedderImpl
-	qstore          qdrant.Store
+	llmClient       *clients.OllamaLLMClient
+	embeddingClient *clients.OllamaEmbeddingClient
+	retriever       *retrievers.QdrantRetriever
 	systemPrompt    *SystemPrompt
 	messageTemplate string
 }
 
 func NewOllamaClient(model string) *OllamaClient {
-	if model == "" {
-		model = defaultOllamaModel
-	}
-	llm, err := ollama.New(ollama.WithModel(model))
+	// Create LLM client
+	llmClient, err := clients.NewOllamaLLMClient(model)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create Ollama client")
 		panic(err)
 	}
-	embedLlm, err := ollama.New(ollama.WithModel(defaultEmbeddingModel))
+
+	// Create embedding client
+	embeddingClient, err := clients.NewOllamaEmbeddingClient()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create embedding client")
 		panic(err)
 	}
-	embedder, err := embeddings.NewEmbedder(embedLlm)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create embedder")
-		panic(err)
-	}
-	qstore, err := initQdrantRetriever(embedder)
+
+	// Create retriever using the embedder from embedding client
+	retriever, err := retrievers.NewQdrantRetriever(embeddingClient.GetEmbedder())
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create qdrant retriever")
 		panic(err)
 	}
+
 	return &OllamaClient{
-		model:    model,
-		llm:      llm,
-		embedder: embedder,
-		qstore:   qstore,
+		llmClient:       llmClient,
+		embeddingClient: embeddingClient,
+		retriever:       retriever,
 		// Дефолтные настройки внутри клиента
 		systemPrompt: &SystemPrompt{
 			Role:    "system",
@@ -131,8 +117,7 @@ func (c *OllamaClient) storeMessageInQdrant(ctx context.Context, role, content s
 		PageContent: content,
 		Metadata:    map[string]interface{}{"role": role, "ts": time.Now().Unix()},
 	}
-	_, err := c.qstore.AddDocuments(ctx, []schema.Document{doc})
-	return err
+	return c.retriever.AddDocuments(ctx, []schema.Document{doc})
 }
 
 // Обычный генератор ответа: принимает вопрос, кидает в LLM, сохраняет и вопрос, и ответ в Qdrant
@@ -171,7 +156,7 @@ func (c *OllamaClient) GenerateResponse(ctx context.Context, messages []Message,
 
 	// ИСПРАВЛЕНО: Используем buildFullPrompt вместо прямого userMsg
 	fullPrompt := c.buildFullPrompt(userMsg)
-	resp, err := c.llm.Call(ctx, fullPrompt, opts...)
+	resp, err := c.llmClient.Call(ctx, fullPrompt, opts...)
 	if err != nil {
 		return "", fmt.Errorf("error from langchaingo Ollama: %w", err)
 	}
@@ -202,7 +187,12 @@ func (c *OllamaClient) GenerateVectorResponse(ctx context.Context, userMessage s
 	defer cancel()
 
 	// 2. Создание retriever для получения документов из Qdrant
-	retriever := vectorstores.ToRetriever(c.qstore, 10)
+	// We need to implement a wrapper for our retriever to make it compatible
+	// For now, we'll create a compatible retriever manually
+	docs, err := c.retriever.GetRelevantDocuments(ctx, userMessage)
+	if err != nil {
+		return "", err
+	}
 
 	// 3. Создание шаблона промпта, который включает системное сообщение и контекст
 	// Этот шаблон будет использоваться для "сборки" финального запроса к LLM
@@ -211,7 +201,7 @@ func (c *OllamaClient) GenerateVectorResponse(ctx context.Context, userMessage s
 Используй следующий контекст из истории диалога, чтобы ответить на вопрос.
 
 Контекст:
-{{.context}}
+{{.chatContext}}
 
 Вопрос: {{.question}}
 
@@ -220,31 +210,36 @@ func (c *OllamaClient) GenerateVectorResponse(ctx context.Context, userMessage s
 	// Подставляем наш системный промпт в шаблон
 	fullRagPromptStr := strings.Replace(ragTemplate, "{{.system_prompt}}", c.systemPrompt.Content, 1)
 
+	// Creating a wrapper to make our client compatible with llms.Model
+	llmWrapper := &llmWrapper{client: c.llmClient}
+
 	// Создаем объект шаблона
 	prompt := prompts.NewPromptTemplate(
 		fullRagPromptStr,
-		[]string{"context", "question"},
+		[]string{"chatContext", "question"},
 	)
 
+	// Format chatContext from documents
+	var chatContext strings.Builder
+	for _, doc := range docs {
+		chatContext.WriteString(doc.PageContent)
+		chatContext.WriteString("\n")
+	}
+
 	// 4. Создаем цепочку для работы с LLM и нашим шаблоном
-	llmChain := chains.NewLLMChain(c.llm, prompt)
+	llmChain := chains.NewLLMChain(llmWrapper, prompt)
 
-	// 5. Создаем цепочку, которая "наполняет" (stuffs) документы в LLMChain
-	stuffChain := chains.NewStuffDocuments(llmChain)
-
-	// 6. Собираем основную RAG цепочку из "наполнителя" и retriever
-	qaChain := chains.NewRetrievalQA(stuffChain, retriever)
-
-	// 7. Вызываем итоговую цепочку
-	result, err := chains.Call(ctx, qaChain, map[string]any{
-		"query": userMessage, // Стандартный входной ключ для RetrievalQA
+	// 5. Вызываем цепочку напрямую без RetrievalQA
+	result, err := chains.Call(ctx, llmChain, map[string]any{
+		"context":  chatContext.String(),
+		"question": userMessage,
 	}, opts...)
 	if err != nil {
-		log.Err(err).Msg("ошибка при вызове цепочки langchaingo RetrievalQA")
+		log.Err(err).Msg("ошибка при вызове цепочки langchaingo LLMChain")
 		return "", err
 	}
 
-	// 8. Извлекаем результат
+	// 6. Извлекаем результат
 	text, ok := result["text"].(string) // Стандартный выходной ключ
 	if !ok || strings.TrimSpace(text) == "" {
 		return "", errors.New("нет ответа от векторной цепочки")
@@ -260,17 +255,33 @@ func (c *OllamaClient) GenerateVectorResponse(ctx context.Context, userMessage s
 	return text, nil
 }
 
-func initQdrantRetriever(embedder *embeddings.EmbedderImpl) (qdrant.Store, error) {
-	var qdrantUrl, err = url.Parse("http://localhost:6333")
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to parse qdrant url")
-		panic(err)
+// Wrapper to make our client compatible with llms.Model
+type llmWrapper struct {
+	client *clients.OllamaLLMClient
+}
+
+func (w *llmWrapper) Call(ctx context.Context, prompt string, options ...llms.CallOption) (string, error) {
+	return w.client.Call(ctx, prompt, options...)
+}
+
+func (w *llmWrapper) GenerateContent(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error) {
+	// For simplicity, we'll convert the first text message to a prompt
+	if len(messages) > 0 && len(messages[0].Parts) > 0 {
+		if textPart, ok := messages[0].Parts[0].(llms.TextContent); ok {
+			response, err := w.client.Call(ctx, textPart.Text, options...)
+			if err != nil {
+				return nil, err
+			}
+			return &llms.ContentResponse{
+				Choices: []*llms.ContentChoice{
+					{
+						Content: response,
+					},
+				},
+			}, nil
+		}
 	}
-	return qdrant.New(
-		qdrant.WithURL(*qdrantUrl),
-		qdrant.WithCollectionName(defaultCollection),
-		qdrant.WithEmbedder(embedder),
-	)
+	return nil, errors.New("unsupported message format")
 }
 
 func NewRPGOllamaClient(model string) *OllamaClient {
