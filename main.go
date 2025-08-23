@@ -32,6 +32,8 @@ func main() {
 	// Регистрируем обработчик для команды /gpt
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/echo", bot.MatchTypePrefix, echoHandler)
 
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypePrefix, userStatusHandler)
+
 	b.Start(ctx)
 }
 
@@ -78,6 +80,17 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		log.Err(err).Msg("failed to send response message")
 		return
 	}
+}
+
+func userStatusHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update.Message == nil {
+		return
+	}
+
+	UserName := update.Message.From.Username
+	ChatId := update.Message.Chat.ID
+
+	log.Info().Msgf("User %s with chat id %d set status", UserName, ChatId)
 }
 
 func echoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
