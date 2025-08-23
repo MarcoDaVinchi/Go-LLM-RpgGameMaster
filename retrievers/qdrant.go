@@ -3,6 +3,7 @@ package retrievers
 import (
 	"context"
 	"net/url"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/tmc/langchaingo/embeddings"
@@ -25,9 +26,14 @@ type QdrantRetriever struct {
 }
 
 func NewQdrantRetriever(embedder *embeddings.EmbedderImpl) (*QdrantRetriever, error) {
-	qdrantUrl, err := url.Parse("http://localhost:6333")
+	qdrantUrlEnv := os.Getenv("QDRANT_URL")
+	if qdrantUrlEnv == "" {
+		log.Fatal().Msg("QDRANT_URL is not set")
+		panic("QDRANT_URL is not set")
+	}
+	qdrantUrl, err := url.Parse(qdrantUrlEnv)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to parse qdrant url")
+		log.Fatal().Err(err).Str("url", qdrantUrlEnv).Msg("failed to parse qdrant url")
 		return nil, err
 	}
 
