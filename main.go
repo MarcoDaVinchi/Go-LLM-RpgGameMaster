@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -91,6 +92,17 @@ func userStatusHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	ChatId := update.Message.Chat.ID
 
 	log.Info().Msgf("User %s with chat id %d set status", UserName, ChatId)
+
+	prompt := strings.TrimSpace(update.Message.Text[len("/status"):])
+	prompt = fmt.Sprintf("User %s with chat id %d wrote message: %s", UserName, ChatId, prompt)
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: ChatId,
+		Text:   prompt,
+	})
+	if err != nil {
+		log.Err(err).Msg("failed to send message")
+		return
+	}
 }
 
 func echoHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
