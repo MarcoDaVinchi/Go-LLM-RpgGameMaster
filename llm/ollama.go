@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ const (
 
 type OllamaClient struct {
 	llmClient       *clients.OllamaLLMClient
-	embeddingClient *clients.OllamaEmbeddingClient
+	embeddingClient *clients.LlmEmbeddingClient
 	retriever       *retrievers.QdrantRetriever
 	systemPrompt    *SystemPrompt
 	messageTemplate string
@@ -37,8 +38,11 @@ func NewOllamaClient(model string) *OllamaClient {
 		panic(err)
 	}
 
-	// Create embedding client
-	embeddingClient, err := clients.NewOllamaEmbeddingClient()
+	embeddingLlm := os.Getenv("EMBEDDING_MODEL")
+	if embeddingLlm == "" {
+		log.Fatal().Msg("EMBEDDING_MODEL is not set")
+	}
+	embeddingClient, err := clients.NewLlmEmbeddingClient(embeddingLlm)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create embedding client")
 		panic(err)

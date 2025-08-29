@@ -30,11 +30,8 @@ func main() {
 		panic(err)
 	}
 
-	// Регистрируем обработчик для команды /gpt
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/echo", bot.MatchTypePrefix, echoHandler)
-
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/status", bot.MatchTypePrefix, userStatusHandler)
-
 	b.Start(ctx)
 }
 
@@ -56,7 +53,6 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	// Создаем клиент и настраиваем его (только конфигурация)
 	client := llm.NewRPGOllamaClient("llama3.1")
 
 	response, err := client.GenerateSimpleResponse(ctx, prompt)
