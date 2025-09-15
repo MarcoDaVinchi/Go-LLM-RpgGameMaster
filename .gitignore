@@ -18,6 +18,13 @@
 *.ipr
 .idea
 .idea/
+#LLM
+.DS_Store
+.roo/
+.kilocode/
+AGENTS.md
+
+#DB
 qdrant_storage/
 base.db
 

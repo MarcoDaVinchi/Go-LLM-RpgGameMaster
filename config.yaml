@@ -1,0 +1,28 @@
+llm_providers:
+  - name: "ollama"
+    model: "${INFERENCE_MODEL}"
+    base_url: "${INFERENCE_SERVER_URL}"
+  - name: "openai"
+    model: "${OPENAI_MODEL}"
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "${OPENAI_BASE_URL}"
+
+embedding_providers:
+  - name: "ollama"
+    model: "${EMBEDDING_MODEL}"
+    base_url: "${EMBEDDING_SERVER_URL}"
+  - name: "openai"
+    model: "${OPENAI_EMBEDDING_MODEL}"
+    api_key: "${OPENAI_API_KEY}"
+    base_url: "${OPENAI_BASE_URL}"
+
+default_llm: "ollama"
+default_embedding: "ollama"
+
+retrievers:
+  - name: "sqlite"
+    db_path: "base.db"
+  - name: "qdrant"
+    collection: "game_collection"
+
+default_retriever: "sqlite"
