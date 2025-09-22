@@ -46,7 +46,7 @@ func TestProviderFactory(t *testing.T) {
 	}
 
 	// Test creating Ollama LLM provider
-	ollamaProvider, err := providerFactory.CreateLLMProvider("ollama", "llama3.1")
+	ollamaProvider, err := providerFactory.CreateInferenceProvider("ollama", "llama3.1")
 	if err != nil {
 		t.Errorf("Failed to create Ollama LLM provider: %v", err)
 	}
@@ -55,13 +55,13 @@ func TestProviderFactory(t *testing.T) {
 		t.Errorf("Expected Ollama provider name 'ollama', got '%s'", ollamaProvider.Name())
 	}
 
-	// Check that the provider implements the LLMProvider interface
-	if _, ok := ollamaProvider.(interfaces.LLMProvider); !ok {
-		t.Error("OllamaProvider does not implement LLMProvider interface")
+	// Check that the provider implements the InferenceProvider interface
+	if _, ok := ollamaProvider.(interfaces.InferenceProvider); !ok {
+		t.Error("OllamaProvider does not implement InferenceProvider interface")
 	}
 
 	// Test creating OpenAI LLM provider
-	openaiProvider, err := providerFactory.CreateLLMProvider("openai", "gpt-3.5-turbo")
+	openaiProvider, err := providerFactory.CreateInferenceProvider("openai", "gpt-3.5-turbo")
 	if err != nil {
 		t.Errorf("Failed to create OpenAI LLM provider: %v", err)
 	}
@@ -70,9 +70,9 @@ func TestProviderFactory(t *testing.T) {
 		t.Errorf("Expected OpenAI provider name 'openai', got '%s'", openaiProvider.Name())
 	}
 
-	// Check that the provider implements the LLMProvider interface
-	if _, ok := openaiProvider.(interfaces.LLMProvider); !ok {
-		t.Error("OpenAIProvider does not implement LLMProvider interface")
+	// Check that the provider implements the InferenceProvider interface
+	if _, ok := openaiProvider.(interfaces.InferenceProvider); !ok {
+		t.Error("OpenAIProvider does not implement InferenceProvider interface")
 	}
 
 	// Test creating Ollama embedding provider
@@ -85,9 +85,9 @@ func TestProviderFactory(t *testing.T) {
 		t.Errorf("Expected Ollama embedding provider name 'ollama', got '%s'", ollamaEmbeddingProvider.Name())
 	}
 
-	// Check that the provider implements the EmbeddingProvider interface
-	if _, ok := ollamaEmbeddingProvider.(interfaces.EmbeddingProvider); !ok {
-		t.Error("OllamaEmbeddingProvider does not implement EmbeddingProvider interface")
+	// Check that the provider implements the VectorEmbeddingProvider interface
+	if _, ok := ollamaEmbeddingProvider.(interfaces.VectorEmbeddingProvider); !ok {
+		t.Error("OllamaEmbeddingProvider does not implement VectorEmbeddingProvider interface")
 	}
 
 	// Test creating OpenAI embedding provider
@@ -100,9 +100,9 @@ func TestProviderFactory(t *testing.T) {
 		t.Errorf("Expected OpenAI embedding provider name 'openai', got '%s'", openaiEmbeddingProvider.Name())
 	}
 
-	// Check that the provider implements the EmbeddingProvider interface
-	if _, ok := openaiEmbeddingProvider.(interfaces.EmbeddingProvider); !ok {
-		t.Error("OpenAIEmbeddingProvider does not implement EmbeddingProvider interface")
+	// Check that the provider implements the VectorEmbeddingProvider interface
+	if _, ok := openaiEmbeddingProvider.(interfaces.VectorEmbeddingProvider); !ok {
+		t.Error("OpenAIEmbeddingProvider does not implement VectorEmbeddingProvider interface")
 	}
 
 	// Test creating default LLM provider

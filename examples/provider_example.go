@@ -20,7 +20,7 @@ func main() {
 	providerFactory := factory.NewProviderFactory(cfg)
 
 	// Create LLM provider
-	llmProvider, err := providerFactory.CreateLLMProvider("ollama", "llama3.1")
+	llmProvider, err := providerFactory.CreateInferenceProvider("ollama", "llama3.1")
 	if err != nil {
 		log.Fatalf("Failed to create LLM provider: %v", err)
 	}
@@ -54,7 +54,7 @@ func main() {
 	fmt.Printf("Created %d embeddings\n", len(embeddings))
 
 	// Example of creating OpenAI provider
-	openaiProvider, err := providerFactory.CreateLLMProvider("openai", "gpt-3.5-turbo")
+	openaiProvider, err := providerFactory.CreateInferenceProvider("openai", "gpt-3.5-turbo")
 	if err != nil {
 		log.Printf("Failed to create OpenAI provider: %v", err)
 	} else {

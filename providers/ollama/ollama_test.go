@@ -14,9 +14,9 @@ func TestOllamaProvider(t *testing.T) {
 		t.Fatalf("Failed to create Ollama provider: %v", err)
 	}
 
-	// Check that the provider implements the LLMProvider interface
-	if _, ok := provider.(interfaces.LLMProvider); !ok {
-		t.Error("OllamaProvider does not implement LLMProvider interface")
+	// Check that the provider implements the InferenceProvider interface
+	if _, ok := provider.(interfaces.InferenceProvider); !ok {
+		t.Error("OllamaProvider does not implement InferenceProvider interface")
 	}
 
 	// Check that the provider has the correct name

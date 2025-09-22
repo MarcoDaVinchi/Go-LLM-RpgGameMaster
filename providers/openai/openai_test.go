@@ -7,9 +7,9 @@ import (
 )
 
 func TestOpenAIProvider(t *testing.T) {
-	// Check that the provider implements the LLMProvider interface
-	var _ interfaces.LLMProvider = &OpenAIProvider{}
+	// Check that the provider implements the InferenceProvider interface
+	var _ interfaces.InferenceProvider = &OpenAIProvider{}
 
-	// Check that the embedding provider implements the EmbeddingProvider interface
-	var _ interfaces.EmbeddingProvider = &OpenAIEmbeddingProvider{}
+	// Check that the embedding provider implements the VectorEmbeddingProvider interface
+	var _ interfaces.VectorEmbeddingProvider = &OpenAIEmbeddingProvider{}
 }

@@ -15,14 +15,14 @@ const (
 	ollamaTimeout      = 60 * time.Second
 )
 
-// OllamaProvider implements the LLMProvider interface for Ollama
+// OllamaProvider implements the InferenceProvider interface for Ollama
 type OllamaProvider struct {
 	model string
 	llm   *ollama.LLM
 }
 
 // NewOllamaProvider creates a new Ollama provider instance
-func NewOllamaProvider(model, baseURL string) (interfaces.LLMProvider, error) {
+func NewOllamaProvider(model, baseURL string) (interfaces.InferenceProvider, error) {
 	if model == "" {
 		model = defaultOllamaModel
 	}
@@ -99,14 +99,14 @@ func (p *OllamaProvider) Name() string {
 	return "ollama"
 }
 
-// OllamaEmbeddingProvider implements the EmbeddingProvider interface for Ollama
+// OllamaEmbeddingProvider implements the VectorEmbeddingProvider interface for Ollama
 type OllamaEmbeddingProvider struct {
 	model    string
 	embedder *ollama.LLM
 }
 
 // NewOllamaEmbeddingProvider creates a new Ollama embedding provider instance
-func NewOllamaEmbeddingProvider(model, baseURL string) (interfaces.EmbeddingProvider, error) {
+func NewOllamaEmbeddingProvider(model, baseURL string) (interfaces.VectorEmbeddingProvider, error) {
 	if model == "" {
 		model = "nomic-embed-text"
 	}

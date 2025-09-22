@@ -15,14 +15,14 @@ const (
 	openAITimeout      = 60 * time.Second
 )
 
-// OpenAIProvider implements the LLMProvider interface for OpenAI
+// OpenAIProvider implements the InferenceProvider interface for OpenAI
 type OpenAIProvider struct {
 	model string
 	llm   *openai.LLM
 }
 
 // NewOpenAIProvider creates a new OpenAI provider instance
-func NewOpenAIProvider(model, apiKey, baseURL string) (interfaces.LLMProvider, error) {
+func NewOpenAIProvider(model, apiKey, baseURL string) (interfaces.InferenceProvider, error) {
 	if model == "" {
 		model = defaultOpenAIModel
 	}
@@ -101,14 +101,14 @@ func (p *OpenAIProvider) Name() string {
 	return "openai"
 }
 
-// OpenAIEmbeddingProvider implements the EmbeddingProvider interface for OpenAI
+// OpenAIEmbeddingProvider implements the VectorEmbeddingProvider interface for OpenAI
 type OpenAIEmbeddingProvider struct {
 	model    string
 	embedder *openai.LLM
 }
 
 // NewOpenAIEmbeddingProvider creates a new OpenAI embedding provider instance
-func NewOpenAIEmbeddingProvider(model, apiKey, baseURL string) (interfaces.EmbeddingProvider, error) {
+func NewOpenAIEmbeddingProvider(model, apiKey, baseURL string) (interfaces.VectorEmbeddingProvider, error) {
 	if model == "" {
 		model = "text-embedding-ada-002"
 	}

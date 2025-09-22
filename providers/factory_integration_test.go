@@ -61,14 +61,14 @@ func TestFactoryIntegration(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Test LLM provider creation
-			llmProvider, err := providerFactory.CreateLLMProvider(tc.providerType, tc.modelName)
+			llmProvider, err := providerFactory.CreateInferenceProvider(tc.providerType, tc.modelName)
 			if tc.shouldSucceed {
 				if err != nil {
 					t.Errorf("Failed to create LLM provider: %v", err)
 				} else {
 					// Verify the provider implements the interface
-					if _, ok := llmProvider.(interfaces.LLMProvider); !ok {
-						t.Error("Provider does not implement LLMProvider interface")
+					if _, ok := llmProvider.(interfaces.InferenceProvider); !ok {
+						t.Error("Provider does not implement InferenceProvider interface")
 					}
 
 					// Verify the provider name
@@ -89,8 +89,8 @@ func TestFactoryIntegration(t *testing.T) {
 					t.Errorf("Failed to create embedding provider: %v", err)
 				} else {
 					// Verify the provider implements the interface
-					if _, ok := embeddingProvider.(interfaces.EmbeddingProvider); !ok {
-						t.Error("Provider does not implement EmbeddingProvider interface")
+					if _, ok := embeddingProvider.(interfaces.VectorEmbeddingProvider); !ok {
+						t.Error("Provider does not implement VectorEmbeddingProvider interface")
 					}
 
 					// Verify the provider name
@@ -183,15 +183,15 @@ func TestProviderUsageFlow(t *testing.T) {
 
 // Test interface compliance for all provider implementations
 func TestProviderInterfaceCompliance(t *testing.T) {
-	// Test that OllamaProvider implements LLMProvider
-	var _ interfaces.LLMProvider = (*ollama.OllamaProvider)(nil)
+	// Test that OllamaProvider implements InferenceProvider
+	var _ interfaces.InferenceProvider = (*ollama.OllamaProvider)(nil)
 
-	// Test that OpenAIProvider implements LLMProvider
-	var _ interfaces.LLMProvider = (*openai.OpenAIProvider)(nil)
+	// Test that OpenAIProvider implements InferenceProvider
+	var _ interfaces.InferenceProvider = (*openai.OpenAIProvider)(nil)
 
-	// Test that OllamaEmbeddingProvider implements EmbeddingProvider
-	var _ interfaces.EmbeddingProvider = (*ollama.OllamaEmbeddingProvider)(nil)
+	// Test that OllamaEmbeddingProvider implements VectorEmbeddingProvider
+	var _ interfaces.VectorEmbeddingProvider = (*ollama.OllamaEmbeddingProvider)(nil)
 
-	// Test that OpenAIEmbeddingProvider implements EmbeddingProvider
-	var _ interfaces.EmbeddingProvider = (*openai.OpenAIEmbeddingProvider)(nil)
+	// Test that OpenAIEmbeddingProvider implements VectorEmbeddingProvider
+	var _ interfaces.VectorEmbeddingProvider = (*openai.OpenAIEmbeddingProvider)(nil)
 }

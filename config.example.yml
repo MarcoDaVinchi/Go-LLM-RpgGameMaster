@@ -1,0 +1,65 @@
+# config.example.yml - Example configuration for Go-LLM-RpgGameMaster
+# How to use:
+# 1. Copy this file to config.yml
+# 2. Fill in the values or set the environment variables referenced as ${VAR}
+# Notes:
+# - YAML supports ${VAR} substitution; values will be taken from the environment at runtime
+# - Valid model types: openai | ollama
+# - Valid retriever types: qdrant | sqlite (sqlite not used here; vector retriever uses qdrant)
+# - Required env vars: RPG_TELEGRAM_BOT_API_KEY for Telegram bot, QDRANT_URL for vector storage (or use default)
+
+profile: "local"  # "local" prints pretty logs; use "prod" for JSON logs
+
+inference_model:
+  # OpenAI-style HTTP API base URL (e.g., OpenAI, OpenRouter, etc.)
+  # For OpenAI: https://api.openai.com/v1
+  # For OpenRouter: https://openrouter.ai/api/v1
+  url: "${INFERENCE_SERVER_URL:https://api.openai.com/v1}"
+  # Choose provider type: openai | ollama
+  type: "openai"
+  # Example model:
+  # - OpenAI: gpt-4o-mini | gpt-4o | gpt-4.1-mini
+  # - OpenRouter: qwen/qwen2.5:7b | meta-llama/llama-3.1-8b-instruct
+  # - Ollama: llama3.1 | qwen2.5
+  name: "gpt-4o-mini"
+  # API key is required for hosted providers (OpenAI/OpenRouter). For Ollama it can be empty.
+  api_key: "${OPENAI_API_KEY}"
+
+embedding_model:
+  # If using Ollama locally for embeddings, point to local server
+  url: "${EMBEDDING_SERVER_URL:http://localhost:11434}"
+  # Choose provider type: openai | ollama
+  type: "ollama"
+  # Examples:
+  # - Ollama: nomic-embed-text | all-minilm
+  # - OpenAI: text-embedding-3-small | text-embedding-3-large
+  name: "nomic-embed-text"
+  # Optional for Ollama; required for OpenAI/OpenRouter
+  api_key: "${OPENAI_API_KEY}"
+
+vector_retriever:
+  # Qdrant vector DB endpoint
+  url: "${QDRANT_URL:http://localhost:6333}"
+  # Choose retriever type: qdrant | sqlite
+  type: "qdrant"
+  # Logical name for the retriever
+  name: "qdrant"
+
+# Telegram bot API token. Required at runtime.
+telegram_bot_api_key: "${RPG_TELEGRAM_BOT_API_KEY}"
+
+# --- Alternative local-only setup (Ollama + Qdrant) ---
+# inference_model:
+#   url: "${INFERENCE_SERVER_URL:http://localhost:11434}"
+#   type: "ollama"
+#   name: "llama3.1"
+#   api_key: ""
+# embedding_model:
+#   url: "${EMBEDDING_SERVER_URL:http://localhost:11434}"
+#   type: "ollama"
+#   name: "nomic-embed-text"
+#   api_key: ""
+# vector_retriever:
+#   url: "${QDRANT_URL:http://localhost:6333}"
+#   type: "qdrant"
+#   name: "qdrant"
