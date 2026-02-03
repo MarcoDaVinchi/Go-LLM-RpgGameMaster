@@ -1,10 +1,21 @@
 # Go LLM RPG Game Master
 
-**Generated:** 2026-02-03 | **Commit:** 2b92ea9 | **Branch:** main
+**Generated:** 2026-02-03 | **Commit:** 71f8f47 | **Branch:** main  
+**Last Updated:** 2026-02-03
+
+## ⚠️ Active Migration Context
+
+🚨 **IMPORTANT:** Project is currently migrating away from langchaingo to direct HTTP calls.  
+📋 **See:** [AGENTS-TODO.md](./AGENTS-TODO.md) for current status and next steps.
+
+**Key Changes:**
+- Removing `langchaingo` dependency (weak maintenance, hides simple HTTP)
+- Consolidating to single provider: **RouterAI.ru** (OpenAI-compatible API)
+- OpenAI and Ollama providers will be replaced by unified `providers/routerai/`
 
 ## Overview
 
-Telegram bot for RPG game mastering with LLM integration. Supports OpenAI and Ollama backends via provider pattern. Uses langchaingo for LLM abstraction, Qdrant/SQLite for vector storage.
+Telegram bot for RPG game mastering with LLM integration. Uses RouterAI.ru (OpenAI-compatible) via direct HTTP calls. Qdrant/SQLite for vector storage.
 
 ## Structure
 
@@ -179,10 +190,34 @@ EMBEDDING_SERVER_URL=...      # Optional, has defaults
 5. Add case in `factory/factory.go` switch statements
 6. Add tests in `providers/{name}/{name}_test.go`
 
+## Documentation for AI Agents
+
+This project uses structured documentation for AI-assisted development:
+
+| File | Purpose |
+|------|---------|
+| `AGENTS.md` | This file - general project overview and conventions |
+| `AGENTS-TODO.md` | Active TODOs, migration plans, current context |
+| `docs/agents/decisions/` | Architecture Decision Records (ADRs) |
+| `docs/agents/context/` | Known issues, technical debt, context notes |
+
+### Key ADRs
+
+- [ADR 001: Remove langchaingo](./docs/agents/decisions/001-remove-langchaingo.md)
+- [ADR 002: RouterAI Provider](./docs/agents/decisions/002-routerai-provider.md)
+
+### For Future Agents
+
+**Starting a new session?** Read these in order:
+1. Check `AGENTS-TODO.md` for current active work
+2. Review relevant ADRs in `docs/agents/decisions/`
+3. Check `docs/agents/context/known-issues.md` for pitfalls
+4. Then proceed with implementation
+
 ## Notes
 
 - Ollama timeout: 60s hardcoded (may need increase for large models)
 - Default embedding: `nomic-embed-text` for Ollama, `text-embedding-ada-002` for OpenAI
 - Qdrant collection: `game_collection` (hardcoded in `retrievers/qdrant.go`)
 - Tests require running services (Ollama, Qdrant) - no mocks implemented
-- Go 1.25.1 required (see go.mod)
+- Go 1.25.6 required (see go.mod)
