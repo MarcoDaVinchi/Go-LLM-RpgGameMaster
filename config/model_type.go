@@ -11,6 +11,7 @@ const (
 	ModelTypeUnknown ModelType = iota
 	ModelTypeOpenAI
 	ModelTypeOllama
+	ModelTypeRouterAI
 )
 
 func (t ModelType) String() string {
@@ -19,6 +20,8 @@ func (t ModelType) String() string {
 		return "OpenAI"
 	case ModelTypeOllama:
 		return "Ollama"
+	case ModelTypeRouterAI:
+		return "RouterAI"
 	default:
 		return "Unknown"
 	}
@@ -33,6 +36,8 @@ func (t *ModelType) UnmarshalText(text []byte) error {
 		*t = ModelTypeOpenAI
 	case "ollama":
 		*t = ModelTypeOllama
+	case "routerai":
+		*t = ModelTypeRouterAI
 	default:
 		*t = ModelTypeUnknown
 		return fmt.Errorf("invalid model type: %s", text)
