@@ -22,7 +22,6 @@
 .DS_Store
 .roo/
 .kilocode/
-AGENTS.md
 
 #DB
 qdrant_storage/
