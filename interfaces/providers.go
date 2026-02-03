@@ -27,3 +27,9 @@ type Message struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
+
+// Document represents a document with content and metadata for retrievers
+type Document struct {
+	PageContent string
+	Metadata    map[string]interface{}
+}

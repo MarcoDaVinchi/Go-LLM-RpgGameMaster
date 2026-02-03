@@ -7,12 +7,7 @@ import (
 
 // ProviderFactory is responsible for creating provider instances
 type ProviderFactory interface {
-	// CreateLLMProvider creates an LLM provider instance
 	CreateInferenceProvider() (interfaces.InferenceProvider, error)
-
-	// CreateEmbeddingProvider creates an embedding provider instance
 	CreateEmbeddingProvider() (interfaces.VectorEmbeddingProvider, error)
-
-	// CreateRetriever creates a retriever instance
-	CreateRetriever() (retrievers.Retriever, error)
+	CreateRetriever(embedder interfaces.VectorEmbeddingProvider, retrieverType string) (retrievers.Retriever, error)
 }
