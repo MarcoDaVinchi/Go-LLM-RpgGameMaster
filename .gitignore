@@ -22,6 +22,7 @@
 .DS_Store
 .roo/
 .kilocode/
+.sisyphus/
 
 #DB
 qdrant_storage/
