@@ -7,9 +7,9 @@
 
 ## 🚀 [MIGRATION-001] Remove langchaingo → Direct HTTP
 
-**Status:** Planning Complete, Ready to Start  
+**Status:** ✅ COMPLETED  
 **Started:** 2026-02-03  
-**Estimated Effort:** 2-3 days  
+**Completed:** 2026-02-03  
 **Priority:** High
 
 ### Context
@@ -20,23 +20,40 @@ Migration from langchaingo library to direct HTTP calls. Langchaingo hides simpl
 - [x] Evaluated replacement complexity (LOW)
 - [x] Selected RouterAI.ru as unified provider (OpenAI-compatible)
 - [x] Created migration documentation
+- [x] Create `providers/routerai/` package
+- [x] Implement HTTP client for RouterAI.ru
+- [x] Add chat completion endpoint (`POST /v1/chat/completions`)
+- [x] Add embeddings endpoint (`POST /v1/embeddings`)
+- [x] Update factory to use RouterAI provider
+- [x] Remove `providers/openai/` (replaced by routerai)
+- [x] Remove `providers/ollama/` (replaced by routerai)
+- [x] Refactor retrievers to remove langchaingo dependencies
+- [x] Update `go.mod` - remove langchaingo
+- [x] Run `go mod tidy`
+- [x] Update tests
+- [x] Verify all tests pass
+- [x] Update AGENTS.md with new architecture
 
-### In Progress 🔄
-- [ ] Create `providers/routerai/` package
-- [ ] Implement HTTP client for RouterAI.ru
-- [ ] Add chat completion endpoint (`POST /v1/chat/completions`)
-- [ ] Add embeddings endpoint (`POST /v1/embeddings`)
+### Summary
+**Migration completed successfully!**
 
-### Pending 📋
-- [ ] Update factory to use RouterAI provider
-- [ ] Remove `providers/openai/` (replaced by routerai)
-- [ ] Remove `providers/ollama/` (replaced by routerai)
-- [ ] Refactor retrievers to remove langchaingo dependencies
-- [ ] Update `go.mod` - remove langchaingo
-- [ ] Run `go mod tidy`
-- [ ] Update tests
-- [ ] Verify all tests pass
-- [ ] Update AGENTS.md with new architecture
+**Key Changes:**
+1. **New Provider:** `providers/routerai/` - Direct HTTP implementation for RouterAI.ru
+2. **Removed Dependencies:** langchaingo + ~53 indirect dependencies removed from go.mod
+3. **Unified Provider:** Single RouterAI.ru provider instead of OpenAI + Ollama
+4. **Refactored Retrievers:** Qdrant and SQLite retrievers now use direct HTTP instead of langchaingo types
+5. **Updated Factory:** Now creates RouterAI provider, old providers return deprecation errors
+
+**Verification:**
+- ✅ `go build ./...` - Success
+- ✅ `go test ./...` - All tests pass
+- ✅ `go vet ./...` - No issues
+
+**Files Changed:**
+- Created: `providers/routerai/routerai.go`, `providers/routerai/types.go`, `providers/routerai/routerai_test.go`
+- Modified: `config/model_type.go`, `factory/factory.go`, `factory/interface/factory.go`, `interfaces/providers.go`, `retrievers/qdrant.go`, `retrievers/sqlite.go`
+- Deleted: `providers/openai/` (entire directory), `providers/ollama/` (entire directory)
+- Updated: `go.mod` (removed langchaingo and related dependencies)
 
 ### Blockers 🚫
 None currently.
@@ -72,7 +89,7 @@ None currently.
 
 ### Technical Debt
 - [ ] Make timeout configurable (currently `60 * time.Second` hardcoded)
-- [ ] Fix `factory.CreateRetriever()` - has undefined variables
+- [x] Fix `factory.CreateRetriever()` - has undefined variables ✅ **FIXED** - Updated signature to use interfaces.VectorEmbeddingProvider
 - [ ] Add bounds checking for string slicing in Telegram handlers
 
 ### Future Improvements
@@ -96,11 +113,10 @@ None currently.
 | 2026-02-03 | Evaluated langchaingo removal | Feasible, 2-3 days effort |
 | 2026-02-03 | Selected RouterAI.ru as provider | Simplifies architecture |
 | 2026-02-03 | Created migration documentation | Ready to start implementation |
+| 2026-02-03 | **Completed full migration** | All tasks done, tests pass |
 
 ---
 
-**Next Session Start Here:**
-1. Read `docs/agents/decisions/001-remove-langchaingo.md`
-2. Read `docs/agents/decisions/002-routerai-provider.md`
-3. Start with `providers/routerai/routerai.go` implementation
-4. Check off items in "In Progress" section above
+**Migration Status: ✅ COMPLETE**
+
+The migration from langchaingo to direct HTTP calls with RouterAI.ru has been successfully completed. All planned tasks have been executed, all tests pass, and the codebase is now cleaner with ~53 fewer dependencies.

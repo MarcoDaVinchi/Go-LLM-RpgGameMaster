@@ -72,7 +72,10 @@ func gptHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	response, err := llmProvider.GenerateResponse(ctx, prompt)
+	messages := []interfaces.Message{
+		{Role: "user", Content: prompt},
+	}
+	response, err := llmProvider.GenerateResponse(ctx, messages, 0.7, 0)
 	if err != nil {
 		log.Err(err).Msg("failed to get response from LLM provider")
 		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
