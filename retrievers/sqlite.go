@@ -6,19 +6,19 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
-	"github.com/tmc/langchaingo/embeddings"
-	"github.com/tmc/langchaingo/schema"
+	"go-llm-rpggamemaster/interfaces"
 )
 
 type SQLiteRetriever struct {
-	db *sql.DB
+	db       *sql.DB
+	embedder interfaces.VectorEmbeddingProvider
 }
 
-func NewSQLiteRetriever(embedder *embeddings.EmbedderImpl) (*SQLiteRetriever, error) {
+func NewSQLiteRetriever(embedder interfaces.VectorEmbeddingProvider) (*SQLiteRetriever, error) {
 	return NewSQLiteRetrieverWithPath(embedder, "base.db")
 }
 
-func NewSQLiteRetrieverWithPath(embedder *embeddings.EmbedderImpl, dbPath string) (*SQLiteRetriever, error) {
+func NewSQLiteRetrieverWithPath(embedder interfaces.VectorEmbeddingProvider, dbPath string) (*SQLiteRetriever, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Error().Err(err).Str("dbPath", dbPath).Msg("failed to open SQLite database")
@@ -26,16 +26,15 @@ func NewSQLiteRetrieverWithPath(embedder *embeddings.EmbedderImpl, dbPath string
 	}
 
 	return &SQLiteRetriever{
-		db: db,
+		db:       db,
+		embedder: embedder,
 	}, nil
 }
 
-func (r *SQLiteRetriever) GetRelevantDocuments(ctx context.Context, query string) ([]schema.Document, error) {
-	// Stub implementation
+func (r *SQLiteRetriever) GetRelevantDocuments(ctx context.Context, query string) ([]interfaces.Document, error) {
 	return nil, nil
 }
 
-func (r *SQLiteRetriever) AddDocuments(ctx context.Context, docs []schema.Document) error {
-	// Stub implementation
+func (r *SQLiteRetriever) AddDocuments(ctx context.Context, docs []interfaces.Document) error {
 	return nil
 }
