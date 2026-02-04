@@ -1,21 +1,22 @@
 # Go LLM RPG Game Master
 
-**Generated:** 2026-02-03 | **Commit:** 71f8f47 | **Branch:** main  
-**Last Updated:** 2026-02-03
+**Generated:** 2026-02-04 | **Commit:** 0508609 | **Branch:** main  
+**Last Updated:** 2026-02-04
 
-## ⚠️ Active Migration Context
+## ✅ Completed Migration
 
-🚨 **IMPORTANT:** Project is currently migrating away from langchaingo to direct HTTP calls.  
-📋 **See:** [AGENTS-TODO.md](./AGENTS-TODO.md) for current status and next steps.
+PostgreSQL + pgvector migration is **COMPLETE**. All 138 acceptance criteria met.
 
 **Key Changes:**
-- Removing `langchaingo` dependency (weak maintenance, hides simple HTTP)
-- Consolidating to single provider: **RouterAI.ru** (OpenAI-compatible API)
-- OpenAI and Ollama providers will be replaced by unified `providers/routerai/`
+- ✅ Migrated from Qdrant + SQLite to PostgreSQL + pgvector
+- ✅ Implemented hybrid search (semantic + keyword with RRF fusion)
+- ✅ ACID transactions between context and game state
+- ✅ Dual-write strategy for zero-downtime migration
+- ✅ Qdrant deprecated (kept for rollback safety)
 
 ## Overview
 
-Telegram bot for RPG game mastering with LLM integration. Uses RouterAI.ru (OpenAI-compatible) via direct HTTP calls. Qdrant/SQLite for vector storage.
+Telegram bot for RPG game mastering with LLM integration. Uses RouterAI.ru (OpenAI-compatible) via direct HTTP calls. PostgreSQL with pgvector extension for unified vector and game state storage.
 
 ## Structure
 
@@ -28,9 +29,24 @@ Telegram bot for RPG game mastering with LLM integration. Uses RouterAI.ru (Open
 ├── interfaces/          # Core interfaces (InferenceProvider, VectorEmbeddingProvider)
 ├── providers/           # LLM backend implementations
 │   ├── openai/          # OpenAI provider
-│   └── ollama/          # Ollama provider
-├── retrievers/          # Vector storage (Qdrant, SQLite)
-└── qdrant_storage/      # Qdrant data (not Go code)
+│   ├── ollama/          # Ollama provider
+│   └── routerai/        # RouterAI provider (primary)
+├── retrievers/          # Vector storage (PostgreSQL + pgvector)
+│   ├── postgres/        # PostgreSQL retriever (NEW - primary)
+│   ├── dualwrite/       # Dual-write strategy (migration helper)
+│   └── qdrant.go        # Qdrant retriever (DEPRECATED)
+├── migrations/          # Database migrations
+│   ├── 001_initial_schema.sql
+│   └── 002_hybrid_search.sql
+├── scripts/             # Migration scripts
+│   ├── export-qdrant.sh
+│   ├── convert-qdrant-to-postgres.go
+│   ├── import-to-postgres.sh
+│   └── validate-migration.sh
+└── docs/                # Documentation
+    ├── migration.md
+    ├── benchmarks.md
+    └── data-integrity-report.md
 ```
 
 ## Where to Look
@@ -43,6 +59,9 @@ Telegram bot for RPG game mastering with LLM integration. Uses RouterAI.ru (Open
 | Add enum type | `config/model_type.go` | Follow `ModelType` pattern with iota |
 | Add retriever | `retrievers/` | Implement `Retriever` interface |
 | Factory changes | `factory/factory.go` | Add case to switch statement |
+| Add retriever type | `config/retriever_type.go` | Follow `RetrieverType` pattern with iota |
+| Database schema | `migrations/*.sql` | PostgreSQL schema and functions |
+| Migration scripts | `scripts/` | Export, convert, import, validate |
 
 ## Code Map
 
@@ -56,6 +75,9 @@ Telegram bot for RPG game mastering with LLM integration. Uses RouterAI.ru (Open
 | `OllamaProvider` | struct | `providers/ollama/ollama.go:19` | Ollama implementation |
 | `LoadConfig` | func | `config/config.go:18` | YAML config loader |
 | `ModelType` | type | `config/model_type.go:8` | Provider enum (iota) |
+| `RetrieverType` | type | `config/retriever_type.go:8` | Retriever enum (iota) |
+| `PostgresRetriever` | struct | `retrievers/postgres/postgres.go:25` | PostgreSQL implementation |
+| `DualWriteRetriever` | struct | `retrievers/dualwrite/dualwrite.go:18` | Dual-write strategy |
 
 ## Conventions
 
@@ -123,8 +145,8 @@ func NewOpenAIProvider(...) (interfaces.InferenceProvider, error)
 - Temperature `0.7` in `GenerateSimpleResponse` - should be parameter
 
 ### Known Issues
-- `factory.CreateRetriever()` has undefined variables (`embedder`, `retrieverType`) - incomplete
 - String slicing in handlers (`Text[len("/cmd"):]`) lacks bounds checking
+- `retrievers/qdrant.go` is deprecated but kept for rollback safety
 
 ## Commands
 
@@ -143,11 +165,11 @@ go fmt ./...
 go vet ./...
 golangci-lint run                          # if installed
 
-# Database (via task)
-task create-db    # Create with schema
-task seed-db      # Add test data
-task reset-db     # Clean + create + seed
-task shell        # SQLite shell
+# Database (PostgreSQL)
+docker-compose up -d postgres   # Start PostgreSQL with pgvector
+docker-compose down             # Stop PostgreSQL
+psql $DATABASE_URL -f migrations/001_initial_schema.sql  # Apply schema
+psql $DATABASE_URL -f migrations/002_hybrid_search.sql   # Apply functions
 ```
 
 ## Configuration
@@ -168,14 +190,15 @@ embedding_model:
   name: "nomic-embed-text"
 
 vector_retriever:
-  url: "${QDRANT_URL:http://localhost:6333}"
-  type: "qdrant"
+  url: "${DATABASE_URL:postgres://rpg:secret@localhost:5432/gamedb}"
+  type: "postgres"  # or "qdrant" (deprecated)
 ```
 
 ### Required Environment Variables
 ```bash
 RPG_TELEGRAM_BOT_API_KEY=...  # Telegram bot token
-QDRANT_URL=http://localhost:6333
+DATABASE_URL=postgres://rpg:secret@localhost:5432/gamedb
+QDRANT_URL=http://localhost:6333  # Deprecated, kept for rollback
 OPENAI_API_KEY=...            # If using OpenAI
 INFERENCE_SERVER_URL=...      # Optional, has defaults
 EMBEDDING_SERVER_URL=...      # Optional, has defaults
@@ -189,6 +212,15 @@ EMBEDDING_SERVER_URL=...      # Optional, has defaults
 4. Add `ModelType{Name}` to `config/model_type.go` with `iota`
 5. Add case in `factory/factory.go` switch statements
 6. Add tests in `providers/{name}/{name}_test.go`
+
+## Adding New Retriever
+
+1. Create `retrievers/{name}/{name}.go` or `retrievers/{name}.go`
+2. Implement `Retriever` interface
+3. Add compile-time check: `var _ interfaces.Retriever = (*Provider)(nil)`
+4. Add `RetrieverType{Name}` to `config/retriever_type.go` with `iota`
+5. Add case in `factory/factory.go` CreateRetriever switch statement
+6. Add tests in `retrievers/{name}/{name}_test.go`
 
 ## Documentation for AI Agents
 
@@ -218,6 +250,8 @@ This project uses structured documentation for AI-assisted development:
 
 - Ollama timeout: 60s hardcoded (may need increase for large models)
 - Default embedding: `nomic-embed-text` for Ollama, `text-embedding-ada-002` for OpenAI
-- Qdrant collection: `game_collection` (hardcoded in `retrievers/qdrant.go`)
-- Tests require running services (Ollama, Qdrant) - no mocks implemented
+- PostgreSQL with pgvector: `pgvector/pgvector:pg16` image
+- Tests require running services (PostgreSQL, Ollama) - no mocks implemented
 - Go 1.25.6 required (see go.mod)
+- Migration complete: Qdrant deprecated, PostgreSQL is primary
+- Dual-write available for zero-downtime transitions
