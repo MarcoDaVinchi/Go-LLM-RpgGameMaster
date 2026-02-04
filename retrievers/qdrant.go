@@ -1,3 +1,7 @@
+// Package qdrant provides a Qdrant-based vector retriever.
+//
+// Deprecated: Qdrant support is deprecated. Use PostgreSQL with pgvector instead.
+// This package is kept for rollback safety but will be removed in a future release.
 package retrievers
 
 import (
