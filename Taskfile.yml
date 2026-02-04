@@ -268,6 +268,24 @@ tasks:
           exit 1
         fi
 
+  postgres-up:
+    desc: Start PostgreSQL with pgvector
+    cmds:
+      - docker-compose up -d postgres
+      - echo "PostgreSQL starting... waiting for health check"
+      - sleep 5
+      - docker-compose ps
+
+  postgres-down:
+    desc: Stop PostgreSQL
+    cmds:
+      - docker-compose down
+
+  postgres-logs:
+    desc: View PostgreSQL logs
+    cmds:
+      - docker-compose logs -f postgres
+
   default:
     desc: "Show available tasks"
     cmds:
