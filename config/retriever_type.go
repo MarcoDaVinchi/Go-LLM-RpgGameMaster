@@ -11,6 +11,7 @@ const (
 	RetrieverTypeUnknown RetrieverType = iota
 	RetrieverTypeSqlite
 	RetrieverTypeQdrant
+	RetrieverTypePostgres
 )
 
 func (t RetrieverType) String() string {
@@ -19,6 +20,8 @@ func (t RetrieverType) String() string {
 		return "Sqlite"
 	case RetrieverTypeQdrant:
 		return "Qdrant"
+	case RetrieverTypePostgres:
+		return "Postgres"
 	default:
 		return "Unknown"
 	}
@@ -30,6 +33,8 @@ func (t *RetrieverType) UnmarshalText(text []byte) error {
 		*t = RetrieverTypeSqlite
 	case "qdrant":
 		*t = RetrieverTypeQdrant
+	case "postgres":
+		*t = RetrieverTypePostgres
 	default:
 		*t = RetrieverTypeUnknown
 		return fmt.Errorf("invalid retriever type: %s", text)

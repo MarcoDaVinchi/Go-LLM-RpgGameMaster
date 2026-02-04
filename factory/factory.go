@@ -1,13 +1,19 @@
 package factory
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	config "go-llm-rpggamemaster/config"
 	factoryinterface "go-llm-rpggamemaster/factory/interface"
 	"go-llm-rpggamemaster/interfaces"
 	"go-llm-rpggamemaster/providers/routerai"
 	"go-llm-rpggamemaster/retrievers"
+	postgresretriever "go-llm-rpggamemaster/retrievers/postgres"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/zerolog/log"
 )
 
 type providerFactory struct {
@@ -61,6 +67,17 @@ func (f *providerFactory) CreateRetriever(embedder interfaces.VectorEmbeddingPro
 		return retrievers.NewSQLiteRetrieverWithPath(embedder, dbPath)
 	case "qdrant":
 		return retrievers.NewQdrantRetriever(embedder)
+	case "postgres":
+		dbURL := os.Getenv("DATABASE_URL")
+		if dbURL == "" {
+			return nil, fmt.Errorf("DATABASE_URL is not set")
+		}
+		pool, err := pgxpool.New(context.Background(), dbURL)
+		if err != nil {
+			return nil, fmt.Errorf("creating database pool: %w", err)
+		}
+		log.Info().Msg("PostgreSQL connection pool created")
+		return postgresretriever.NewPostgresRetriever(pool, embedder)
 	default:
 		return nil, fmt.Errorf("unsupported retriever type: %s", retrieverType)
 	}

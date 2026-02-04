@@ -10,6 +10,7 @@ import (
 	"go-llm-rpggamemaster/config"
 	factory "go-llm-rpggamemaster/factory"
 	"go-llm-rpggamemaster/interfaces"
+	"go-llm-rpggamemaster/retrievers"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -18,10 +19,21 @@ import (
 )
 
 var llmProvider interfaces.InferenceProvider
+var retriever retrievers.Retriever
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
+
+	go func() {
+		<-ctx.Done()
+		log.Info().Msg("Shutting down...")
+		if retriever != nil {
+			if closer, ok := retriever.(interface{ Close() }); ok {
+				closer.Close()
+			}
+		}
+	}()
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -39,6 +51,23 @@ func main() {
 	}
 
 	log.Info().Msgf("Using LLM provider: %s", llmProvider.Name())
+
+	if cfg.VectorRetriever.Type != 0 {
+		providerFactory := factory.NewProviderFactory(cfg)
+		embedder, err := providerFactory.CreateEmbeddingProvider()
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to create embedding provider")
+		}
+
+		log.Info().Msgf("Using embedding provider: %s", embedder.Name())
+
+		retriever, err = providerFactory.CreateRetriever(embedder, strings.ToLower(cfg.VectorRetriever.Type.String()))
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to create retriever")
+		}
+
+		log.Info().Msgf("Retriever initialized: %s", cfg.VectorRetriever.Type)
+	}
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(gptHandler),

@@ -32,7 +32,7 @@ func decodeHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, 
 	case reflect.TypeOf(RetrieverType(0)):
 		var rt RetrieverType
 		if err := rt.UnmarshalText([]byte(data.(string))); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid retriever type: %s", data)
 		}
 		return rt, nil
 	}
